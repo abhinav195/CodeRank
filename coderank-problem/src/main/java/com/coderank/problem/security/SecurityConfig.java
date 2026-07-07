@@ -30,7 +30,7 @@ public class SecurityConfig {
                         // Swagger + Actuator: open
                         .requestMatchers(
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                                "/actuator/health"
+                                "/actuator/**"
                         ).permitAll()
 
                         // Internal endpoints: blocked at Gateway externally, open within cluster

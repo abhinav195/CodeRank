@@ -206,10 +206,20 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,circuitbreakers
+        include: health,info,circuitbreakers,prometheus
   endpoint:
     health:
       show-details: when-authorized
+  otlp:
+    tracing:
+      endpoint: http://coderank-jaeger:4318/v1/traces
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 logging:
   level:

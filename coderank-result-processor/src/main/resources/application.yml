@@ -68,6 +68,16 @@ management:
   endpoint:
     health:
       show-details: always
+  otlp:
+    tracing:
+      endpoint: http://coderank-jaeger:4318/v1/traces
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 # SpringDoc
 springdoc:

@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'coderank-submission'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['coderank-submission:8083']
+
+  - job_name: 'coderank-auth'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'coderank-auth:8081' ]
+
+  - job_name: 'coderank-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'coderank-gateway:8080' ]
+
+  - job_name: 'coderank-problem'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'coderank-problem:8082' ]
+
+  - job_name: 'coderank-execution'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'coderank-execution:8084' ]
+
+  - job_name: 'coderank-result-processor'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'coderank-result-processor:8085' ]

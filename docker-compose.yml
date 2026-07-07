@@ -318,7 +318,54 @@ services:
       timeout: 5s
       start_period: 40s
       retries: 3
+  # ════════════════════════════════════════════════════════════════════════
+  # OBSERVABILITY — Prometheus, Grafana, Jaeger
+  # ════════════════════════════════════════════════════════════════════════
 
+  prometheus:
+    image: prom/prometheus:v2.53.5
+    container_name: coderank-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./coderank-observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - coderank-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: coderank-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./coderank-observability/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - coderank-net
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    container_name: coderank-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - coderank-net
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: coderank-jenkins
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - coderank-net
 # ════════════════════════════════════════════════════════════════════════
 # VOLUMES & NETWORKS
 # ════════════════════════════════════════════════════════════════════════
@@ -329,6 +376,8 @@ volumes:
   postgres_submission_data:
   redis_data:
   kafka_data:
+  grafana_data:
+  jenkins_home:
 
 networks:
   coderank-net:
