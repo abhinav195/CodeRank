@@ -35,6 +35,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * acks the offset. Validation of payload contents (null jobId, blank source code,
  * etc.) is the responsibility of upstream services. These tests therefore verify
  * the dispatch/ack contract and the DLT handler's best-effort recovery semantics.
+ *
+ * <p>{@code handleDlt} takes a raw {@code byte[]} payload plus {@code jobId} /
+ * {@code submissionId} extracted from Kafka headers (not from the event object),
+ * so tests pass those identifiers explicitly as header strings.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ExecutionRequestConsumer")
@@ -180,8 +184,12 @@ class ExecutionRequestConsumerTest {
                     .publishFailedResult(any(UUID.class), any(UUID.class), anyString());
 
             assertThatNoException().isThrownBy(() ->
-                    consumer.handleDlt(event, "code.execution.requests-dlt", 0, 1L,
-                            "Execution failed after all retries"));
+                    consumer.handleDlt(
+                            "irrelevant-payload".getBytes(),
+                            "code.execution.requests-dlt", 0, 1L,
+                            "Execution failed after all retries",
+                            event.getJobId().toString(),
+                            event.getSubmissionId().toString()));
 
             verify(codeExecutionService).publishFailedResult(
                     eq(event.getJobId()), eq(event.getSubmissionId()), anyString());
@@ -196,7 +204,11 @@ class ExecutionRequestConsumerTest {
                     .publishFailedResult(any(UUID.class), any(UUID.class), anyString());
 
             assertThatNoException().isThrownBy(() ->
-                    consumer.handleDlt(event, "code.execution.requests-dlt", 0, 2L, "err"));
+                    consumer.handleDlt(
+                            "irrelevant-payload".getBytes(),
+                            "code.execution.requests-dlt", 0, 2L, "err",
+                            event.getJobId().toString(),
+                            event.getSubmissionId().toString()));
         }
 
         @Test
@@ -206,7 +218,11 @@ class ExecutionRequestConsumerTest {
             doNothing().when(codeExecutionService)
                     .publishFailedResult(any(UUID.class), any(UUID.class), anyString());
 
-            consumer.handleDlt(event, "code.execution.requests-dlt", 0, 3L, "err");
+            consumer.handleDlt(
+                    "irrelevant-payload".getBytes(),
+                    "code.execution.requests-dlt", 0, 3L, "err",
+                    event.getJobId().toString(),
+                    event.getSubmissionId().toString());
 
             verify(codeExecutionService, never()).executeAsync(any(CodeExecutionRequestEvent.class));
             verifyNoInteractions(acknowledgment);
@@ -217,13 +233,31 @@ class ExecutionRequestConsumerTest {
         void shouldIncludeExceptionMessageInReason() {
             CodeExecutionRequestEvent event = buildEvent(Language.PYTHON);
 
-            consumer.handleDlt(event, "code.execution.requests-dlt", 0, 4L,
-                    "RootCause: NPE at line 42");
+            consumer.handleDlt(
+                    "irrelevant-payload".getBytes(),
+                    "code.execution.requests-dlt", 0, 4L,
+                    "RootCause: NPE at line 42",
+                    event.getJobId().toString(),
+                    event.getSubmissionId().toString());
 
             verify(codeExecutionService).publishFailedResult(
                     eq(event.getJobId()),
                     eq(event.getSubmissionId()),
                     org.mockito.ArgumentMatchers.contains("RootCause: NPE at line 42"));
+        }
+
+        @Test
+        @DisplayName("does not publish failed result when jobId header is missing (poison pill)")
+        void shouldSkipPublishWhenJobIdHeaderMissing() {
+            consumer.handleDlt(
+                    "malformed-json".getBytes(),
+                    "code.execution.requests-dlt", 0, 5L,
+                    "Deserialization error",
+                    null,
+                    null);
+
+            verify(codeExecutionService, never())
+                    .publishFailedResult(any(UUID.class), any(UUID.class), anyString());
         }
     }
 }

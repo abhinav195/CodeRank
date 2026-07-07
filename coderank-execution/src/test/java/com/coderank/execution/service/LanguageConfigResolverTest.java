@@ -1,4 +1,3 @@
-// src/test/java/com/coderank/execution/service/LanguageConfigResolverTest.java
 package com.coderank.execution.service;
 
 import com.coderank.common.enums.Language;
@@ -81,19 +80,18 @@ class LanguageConfigResolverTest {
     }
 
     @Test
-    @DisplayName("JAVA source file is Main.java")
+    @DisplayName("JAVA source file is Solution.java")
     void java_sourceFile() {
         assertThat(resolver.resolve(Language.JAVA).sourceFileName())
-                .isEqualTo("Main.java");
+                .isEqualTo("Solution.java");
     }
 
     @Test
-    @DisplayName("JAVA run command compiles then executes Main")
+    @DisplayName("JAVA run command compiles to /tmp then executes Solution")
     void java_runCommand() {
         String cmd = resolver.resolve(Language.JAVA).runCommand();
-        assertThat(cmd).contains("javac Main.java");
-        assertThat(cmd).contains("java Main");
-        assertThat(cmd).startsWith("cd /code");
+        assertThat(cmd).contains("javac -d /tmp /code/Solution.java");
+        assertThat(cmd).contains("java -cp /tmp Solution");
     }
 
     // ── JavaScript ──────────────────────────────────────────────────────
@@ -136,12 +134,11 @@ class LanguageConfigResolverTest {
     }
 
     @Test
-    @DisplayName("CPP run command compiles with g++ -O2 then executes ./solution")
+    @DisplayName("CPP run command compiles with g++ -O2 to /tmp then executes /tmp/solution")
     void cpp_runCommand() {
         String cmd = resolver.resolve(Language.CPP).runCommand();
-        assertThat(cmd).contains("g++ -O2");
-        assertThat(cmd).contains("./solution");
-        assertThat(cmd).startsWith("cd /code");
+        assertThat(cmd).contains("g++ -O2 -o /tmp/solution /code/solution.cpp");
+        assertThat(cmd).contains("/tmp/solution");
     }
 
     // ── Null safety ─────────────────────────────────────────────────────

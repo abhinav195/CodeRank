@@ -56,6 +56,9 @@ import static org.mockito.Mockito.when;
  *       against each test case in order, short-circuiting on TLE / RE / WA.</li>
  *   <li>Any uncaught exception in the pipeline triggers
  *       {@code publishFailedResult} with {@link Verdict#INTERNAL_ERROR}.</li>
+ *   <li>{@code ProblemServiceClient.getTestCases(problemId, userId)} forwards the
+ *       submitting user's identity for internal auth — tests stub with
+ *       {@code req.getUserId()} as the second argument.</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -228,7 +231,7 @@ class CodeExecutionServiceTest {
 
             service.executeAsync(req);
 
-            verify(problemServiceClient, never()).getTestCases(any(UUID.class));
+            verify(problemServiceClient, never()).getTestCases(any(UUID.class), any(UUID.class));
         }
     }
 
@@ -244,7 +247,7 @@ class CodeExecutionServiceTest {
         @DisplayName("ACCEPTED verdict when all test cases pass with matching trimmed stdout")
         void submitAllAccepted() {
             CodeExecutionRequestEvent req = submitEvent(Language.PYTHON);
-            when(problemServiceClient.getTestCases(req.getProblemId()))
+            when(problemServiceClient.getTestCases(req.getProblemId(), req.getUserId()))
                     .thenReturn(List.of(tc("1", "2"), tc("3", "4")));
             when(sandboxRunner.run(any(ExecutionConfig.class)))
                     .thenReturn(execResult(ExecutionStatus.COMPLETED, "2\n", "", 0, 50L))
@@ -269,7 +272,7 @@ class CodeExecutionServiceTest {
         @DisplayName("WRONG_ANSWER and short-circuits on the first mismatching test case")
         void submitWrongAnswerShortCircuits() {
             CodeExecutionRequestEvent req = submitEvent(Language.PYTHON);
-            when(problemServiceClient.getTestCases(req.getProblemId()))
+            when(problemServiceClient.getTestCases(req.getProblemId(), req.getUserId()))
                     .thenReturn(List.of(tc("1", "expected-A"), tc("2", "expected-B")));
             when(sandboxRunner.run(any(ExecutionConfig.class)))
                     .thenReturn(execResult(ExecutionStatus.COMPLETED, "wrong-A", "", 0, 10L));
@@ -293,7 +296,7 @@ class CodeExecutionServiceTest {
         @DisplayName("RUNTIME_ERROR and short-circuits when test-case run exits non-zero")
         void submitRuntimeError() {
             CodeExecutionRequestEvent req = submitEvent(Language.JAVA);
-            when(problemServiceClient.getTestCases(req.getProblemId()))
+            when(problemServiceClient.getTestCases(req.getProblemId(), req.getUserId()))
                     .thenReturn(List.of(tc("1", "ok"), tc("2", "ok")));
             when(sandboxRunner.run(any(ExecutionConfig.class)))
                     .thenReturn(execResult(ExecutionStatus.FAILED, "", "NullPointerException", 1, 25L));
@@ -315,7 +318,7 @@ class CodeExecutionServiceTest {
         @DisplayName("TIME_LIMIT_EXCEEDED when a test case executionTimeMs >= timeout*1000")
         void submitTle() {
             CodeExecutionRequestEvent req = submitEvent(Language.CPP);
-            when(problemServiceClient.getTestCases(req.getProblemId()))
+            when(problemServiceClient.getTestCases(req.getProblemId(), req.getUserId()))
                     .thenReturn(List.of(tc("in", "out")));
             // timeoutSeconds = 10  =>  >=10_000 ms is TLE
             when(sandboxRunner.run(any(ExecutionConfig.class)))
@@ -335,7 +338,7 @@ class CodeExecutionServiceTest {
         @DisplayName("INTERNAL_ERROR when Problem Service returns empty test cases")
         void submitEmptyTestCasesYieldsInternalError() {
             CodeExecutionRequestEvent req = submitEvent(Language.PYTHON);
-            when(problemServiceClient.getTestCases(req.getProblemId()))
+            when(problemServiceClient.getTestCases(req.getProblemId(), req.getUserId()))
                     .thenReturn(Collections.emptyList());
 
             service.executeAsync(req);
@@ -353,7 +356,7 @@ class CodeExecutionServiceTest {
         @DisplayName("INTERNAL_ERROR when Problem Service returns null list")
         void submitNullTestCasesYieldsInternalError() {
             CodeExecutionRequestEvent req = submitEvent(Language.PYTHON);
-            when(problemServiceClient.getTestCases(req.getProblemId())).thenReturn(null);
+            when(problemServiceClient.getTestCases(req.getProblemId(), req.getUserId())).thenReturn(null);
 
             service.executeAsync(req);
 
@@ -368,7 +371,7 @@ class CodeExecutionServiceTest {
         void submitUsesTestCaseStdin() {
             CodeExecutionRequestEvent req = submitEvent(Language.PYTHON);
             TestCaseDto t1 = tc("input-1", "out-1");
-            when(problemServiceClient.getTestCases(req.getProblemId())).thenReturn(List.of(t1));
+            when(problemServiceClient.getTestCases(req.getProblemId(), req.getUserId())).thenReturn(List.of(t1));
             when(sandboxRunner.run(any(ExecutionConfig.class)))
                     .thenReturn(execResult(ExecutionStatus.COMPLETED, "out-1", "", 0, 10L));
 
@@ -467,7 +470,7 @@ class CodeExecutionServiceTest {
         @DisplayName("on ProblemService failure (RuntimeException), publishes INTERNAL_ERROR")
         void shouldHandleProblemServiceFailure() {
             CodeExecutionRequestEvent req = submitEvent(Language.PYTHON);
-            when(problemServiceClient.getTestCases(req.getProblemId()))
+            when(problemServiceClient.getTestCases(req.getProblemId(), req.getUserId()))
                     .thenThrow(new RuntimeException("Problem Service 503"));
 
             service.executeAsync(req);

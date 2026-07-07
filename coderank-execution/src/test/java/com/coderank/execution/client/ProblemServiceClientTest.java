@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
  * Unit tests for {@link ProblemServiceClient}.
  *
  * <p>The WebClient fluent chain
- * {@code webClient.get().uri(...).retrieve().bodyToMono(...).block()}
+ * {@code webClient.get().uri(...).header(...).header(...).retrieve().bodyToMono(...).block()}
  * involves wildcard-generic return types ({@code RequestHeadersSpec<?>}) that
  * confuse Mockito's {@code when(...).thenReturn(...)} type inference.
  * We therefore use {@code doReturn(...).when(...)} for the steps whose
@@ -62,6 +62,9 @@ class ProblemServiceClientTest {
         doReturn(requestHeadersUriSpec).when(webClient).get();
         doReturn(requestHeadersSpec).when(requestHeadersUriSpec)
                 .uri(anyString(), any(Object[].class));
+        // Client calls .header(...) twice (X-User-Id, X-User-Role) — chain back onto same mock.
+        doReturn(requestHeadersSpec).when(requestHeadersSpec)
+                .header(anyString(), anyString());
         doReturn(responseSpec).when(requestHeadersSpec).retrieve();
     }
 
@@ -71,6 +74,7 @@ class ProblemServiceClientTest {
     @DisplayName("returns the list of test cases on a 2xx response")
     void returnsTestCasesOnSuccess() {
         UUID problemId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         List<TestCaseDto> stub = List.of(
                 TestCaseDto.builder().id(UUID.randomUUID())
                         .input("1 2").expectedOutput("3").hidden(false).build(),
@@ -80,7 +84,7 @@ class ProblemServiceClientTest {
         doReturn(Mono.just(stub)).when(responseSpec)
                 .bodyToMono(any(ParameterizedTypeReference.class));
 
-        List<TestCaseDto> result = client.getTestCases(problemId);
+        List<TestCaseDto> result = client.getTestCases(problemId, userId);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getInput()).isEqualTo("1 2");
@@ -90,6 +94,8 @@ class ProblemServiceClientTest {
         verify(requestHeadersUriSpec).uri(
                 eq("/api/v1/internal/problems/{id}/testcases"),
                 eq(problemId));
+        verify(requestHeadersSpec).header(eq("X-User-Id"), eq(userId.toString()));
+        verify(requestHeadersSpec).header(eq("X-User-Role"), eq("ROLE_USER"));
     }
 
     @Test
@@ -98,7 +104,7 @@ class ProblemServiceClientTest {
         doReturn(Mono.empty()).when(responseSpec)
                 .bodyToMono(any(ParameterizedTypeReference.class));
 
-        List<TestCaseDto> result = client.getTestCases(UUID.randomUUID());
+        List<TestCaseDto> result = client.getTestCases(UUID.randomUUID(), UUID.randomUUID());
 
         assertThat(result).isNotNull().isEmpty();
     }
@@ -109,7 +115,7 @@ class ProblemServiceClientTest {
         doReturn(Mono.just(List.of())).when(responseSpec)
                 .bodyToMono(any(ParameterizedTypeReference.class));
 
-        List<TestCaseDto> result = client.getTestCases(UUID.randomUUID());
+        List<TestCaseDto> result = client.getTestCases(UUID.randomUUID(), UUID.randomUUID());
 
         assertThat(result).isNotNull().isEmpty();
     }
@@ -120,13 +126,14 @@ class ProblemServiceClientTest {
     @DisplayName("wraps WebClientResponseException (404) in a RuntimeException")
     void wraps4xxInRuntimeException() {
         UUID problemId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         WebClientResponseException notFound = WebClientResponseException.create(
                 HttpStatus.NOT_FOUND.value(), "Not Found", null, null, null);
 
         doReturn(Mono.error(notFound)).when(responseSpec)
                 .bodyToMono(any(ParameterizedTypeReference.class));
 
-        assertThatThrownBy(() -> client.getTestCases(problemId))
+        assertThatThrownBy(() -> client.getTestCases(problemId, userId))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Failed to fetch test cases")
                 .hasMessageContaining(problemId.toString())
@@ -142,7 +149,7 @@ class ProblemServiceClientTest {
         doReturn(Mono.error(serverError)).when(responseSpec)
                 .bodyToMono(any(ParameterizedTypeReference.class));
 
-        assertThatThrownBy(() -> client.getTestCases(UUID.randomUUID()))
+        assertThatThrownBy(() -> client.getTestCases(UUID.randomUUID(), UUID.randomUUID()))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Failed to fetch test cases");
     }
@@ -153,7 +160,7 @@ class ProblemServiceClientTest {
         doReturn(Mono.error(new IllegalStateException("connection reset")))
                 .when(responseSpec).bodyToMono(any(ParameterizedTypeReference.class));
 
-        assertThatThrownBy(() -> client.getTestCases(UUID.randomUUID()))
+        assertThatThrownBy(() -> client.getTestCases(UUID.randomUUID(), UUID.randomUUID()))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Failed to fetch test cases");
     }

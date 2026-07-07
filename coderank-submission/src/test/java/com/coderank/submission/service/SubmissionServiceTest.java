@@ -130,7 +130,7 @@ class SubmissionServiceTest {
         @Test
         @DisplayName("persists a RUN submission with correct fields")
         void shouldPersistRunSubmission() {
-            when(submissionRepository.save(any(Submission.class))).thenReturn(savedSubmission);
+            when(submissionRepository.saveAndFlush(any(Submission.class))).thenReturn(savedSubmission);
             when(submissionMapper.toResponse(savedSubmission)).thenReturn(submissionResponse);
 
             RunRequest request = RunRequest.builder()
@@ -142,7 +142,7 @@ class SubmissionServiceTest {
             SubmissionResponse result = submissionService.run(request, userId);
 
             ArgumentCaptor<Submission> captor = ArgumentCaptor.forClass(Submission.class);
-            verify(submissionRepository).save(captor.capture());
+            verify(submissionRepository).saveAndFlush(captor.capture());
             Submission persisted = captor.getValue();
 
             assertThat(persisted.getUserId()).isEqualTo(userId);
@@ -160,7 +160,7 @@ class SubmissionServiceTest {
         @Test
         @DisplayName("publishes execution request to correct topic with jobId as key")
         void shouldPublishToKafka() {
-            when(submissionRepository.save(any())).thenReturn(savedSubmission);
+            when(submissionRepository.saveAndFlush(any())).thenReturn(savedSubmission);
             when(submissionMapper.toResponse(any())).thenReturn(submissionResponse);
 
             RunRequest request = RunRequest.builder()
@@ -196,7 +196,7 @@ class SubmissionServiceTest {
                     .language(Language.PYTHON).submissionType(SubmissionType.RUN)
                     .sourceCode("x=1").status(ExecutionStatus.QUEUED).verdict(Verdict.PENDING)
                     .build();
-            when(submissionRepository.save(any())).thenReturn(noStdin);
+            when(submissionRepository.saveAndFlush(any())).thenReturn(noStdin);
             when(submissionMapper.toResponse(any())).thenReturn(submissionResponse);
 
             RunRequest request = RunRequest.builder()
@@ -214,7 +214,7 @@ class SubmissionServiceTest {
         @Test
         @DisplayName("caches QUEUED status in Redis after run (key prefix only — jobId is generated inside service)")
         void shouldCacheQueuedStatusAfterRun() {
-            when(submissionRepository.save(any())).thenReturn(savedSubmission);
+            when(submissionRepository.saveAndFlush(any())).thenReturn(savedSubmission);
             when(submissionMapper.toResponse(any())).thenReturn(submissionResponse);
 
             RunRequest request = RunRequest.builder()
@@ -253,7 +253,7 @@ class SubmissionServiceTest {
         @Test
         @DisplayName("persists a SUBMIT submission with problemId and no stdinInput")
         void shouldPersistSubmitSubmission() {
-            when(submissionRepository.save(any(Submission.class))).thenReturn(savedSubmission);
+            when(submissionRepository.saveAndFlush(any(Submission.class))).thenReturn(savedSubmission);
             when(submissionMapper.toResponse(savedSubmission)).thenReturn(submissionResponse);
 
             SubmitRequest request = SubmitRequest.builder()
@@ -265,7 +265,7 @@ class SubmissionServiceTest {
             submissionService.submit(request, userId);
 
             ArgumentCaptor<Submission> captor = ArgumentCaptor.forClass(Submission.class);
-            verify(submissionRepository).save(captor.capture());
+            verify(submissionRepository).saveAndFlush(captor.capture());
             Submission persisted = captor.getValue();
 
             assertThat(persisted.getProblemId()).isEqualTo(problemId);
@@ -278,7 +278,7 @@ class SubmissionServiceTest {
         @Test
         @DisplayName("publishes event with problemId and null stdinInput")
         void shouldPublishWithProblemId() {
-            when(submissionRepository.save(any())).thenReturn(savedSubmission);
+            when(submissionRepository.saveAndFlush(any())).thenReturn(savedSubmission);
             when(submissionMapper.toResponse(any())).thenReturn(submissionResponse);
 
             SubmitRequest request = SubmitRequest.builder()
@@ -304,7 +304,7 @@ class SubmissionServiceTest {
         @Test
         @DisplayName("caches QUEUED status in Redis after submit (key prefix only — jobId is generated inside service)")
         void shouldCacheQueuedStatusAfterSubmit() {
-            when(submissionRepository.save(any())).thenReturn(savedSubmission);
+            when(submissionRepository.saveAndFlush(any())).thenReturn(savedSubmission);
             when(submissionMapper.toResponse(any())).thenReturn(submissionResponse);
 
             SubmitRequest request = SubmitRequest.builder()
