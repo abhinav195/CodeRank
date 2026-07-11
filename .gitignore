@@ -9,6 +9,10 @@ file_architecture.html
 file_architecture.py
 file_architecture.txt
 files.txt
+code_builder_docker_context.py
+codebase_docker_context.txt
+.gitignore
+
 
 # ----- Maven -----
 target/

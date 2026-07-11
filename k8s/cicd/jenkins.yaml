@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-home
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coderank-jenkins
+  namespace: default
+  labels:
+    app: coderank-jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coderank-jenkins
+  template:
+    metadata:
+      labels:
+        app: coderank-jenkins
+    spec:
+      initContainers:
+        - name: install-tools
+          image: docker:26-cli
+          command:
+            - sh
+            - -c
+            - |
+              cp /usr/local/bin/docker /tools/docker
+              wget -q https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl -O /tools/kubectl
+              chmod +x /tools/kubectl
+          volumeMounts:
+            - name: tools
+              mountPath: /tools
+      containers:
+        - name: jenkins
+          image: jenkins/jenkins:lts
+          env:
+            - name: JAVA_OPTS
+              value: "-Djenkins.install.runSetupWizard=true"
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 50000
+              name: agent
+          volumeMounts:
+            - name: jenkins-home
+              mountPath: /var/jenkins_home
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            - name: tools
+              mountPath: /tools
+          securityContext:
+            runAsUser: 0
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+              export PATH="/tools:$PATH"
+              SOCK_GID=$(stat -c '%g' /var/run/docker.sock)
+              EXISTING_GROUP=$(getent group $SOCK_GID | cut -d: -f1 || true)
+              if [ -z "$EXISTING_GROUP" ]; then
+                groupadd -g $SOCK_GID dockerhost
+                EXISTING_GROUP=dockerhost
+              fi
+              usermod -aG $EXISTING_GROUP jenkins
+              exec su jenkins -c "export PATH=/tools:\$PATH && /usr/local/bin/jenkins.sh"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+      volumes:
+        - name: jenkins-home
+          persistentVolumeClaim:
+            claimName: jenkins-home
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        - name: tools
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coderank-jenkins
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: coderank-jenkins
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30800
+    - name: agent
+      port: 50000
+      targetPort: 50000
