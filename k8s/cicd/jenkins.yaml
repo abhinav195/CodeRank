@@ -27,6 +27,7 @@ spec:
       labels:
         app: coderank-jenkins
     spec:
+      serviceAccountName: jenkins-sa
       initContainers:
         - name: install-tools
           image: docker:26-cli
@@ -34,12 +35,12 @@ spec:
             - sh
             - -c
             - |
-              cp /usr/local/bin/docker /tools/docker
-              wget -q https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl -O /tools/kubectl
-              chmod +x /tools/kubectl
+              cp /usr/local/bin/docker /shared/docker
+              wget -q https://dl.k8s.io/release/v1.32.2/bin/linux/amd64/kubectl -O /shared/kubectl
+              chmod +x /shared/kubectl /shared/docker
           volumeMounts:
             - name: tools
-              mountPath: /tools
+              mountPath: /shared
       containers:
         - name: jenkins
           image: jenkins/jenkins:lts
@@ -57,7 +58,7 @@ spec:
             - name: docker-sock
               mountPath: /var/run/docker.sock
             - name: tools
-              mountPath: /tools
+              mountPath: /usr/local/bin/tools
           securityContext:
             runAsUser: 0
           command:
@@ -65,7 +66,9 @@ spec:
             - -c
             - |
               set -e
-              export PATH="/tools:$PATH"
+              cp /usr/local/bin/tools/kubectl /usr/local/bin/kubectl
+              cp /usr/local/bin/tools/docker /usr/local/bin/docker
+              chmod +x /usr/local/bin/kubectl /usr/local/bin/docker
               SOCK_GID=$(stat -c '%g' /var/run/docker.sock)
               EXISTING_GROUP=$(getent group $SOCK_GID | cut -d: -f1 || true)
               if [ -z "$EXISTING_GROUP" ]; then
@@ -73,7 +76,7 @@ spec:
                 EXISTING_GROUP=dockerhost
               fi
               usermod -aG $EXISTING_GROUP jenkins
-              exec su jenkins -c "export PATH=/tools:\$PATH && /usr/local/bin/jenkins.sh"
+              exec su jenkins -c "/usr/local/bin/jenkins.sh"
           resources:
             requests:
               memory: "1Gi"
