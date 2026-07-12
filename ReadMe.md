@@ -103,5 +103,6 @@ The pipeline will automatically build the Maven project, create Docker images, a
 
 **3. Monitor Pod Health**
 Ensure all microservices, Kafka brokers, and databases are running securely inside the cluster.
+
 kubectl get pods -w
 
