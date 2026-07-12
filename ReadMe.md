@@ -1,17 +1,12 @@
 # CodeRank
 
-
-
 > A highly concurrent, fault-tolerant online code execution platform built on event-driven microservices.
-
 
 
 CodeRank is an enterprise-grade backend ecosystem designed to safely compile and execute untrusted user code across multiple languages (Python, Java, C++, JavaScript). It leverages an asynchronous, event-driven architecture to maintain absolute stability and low latency under massive concurrent load.
 
 
-
 ## Key Features
-
 
 
 * **Isolated Docker Sandboxing:** Dynamically provisions resource-constrained (CPU/Memory limits, read-only root FS, disabled networking) Docker containers for every execution to prevent host compromise.
@@ -27,33 +22,20 @@ CodeRank is an enterprise-grade backend ecosystem designed to safely compile and
 
 * **Container Orchestration:** Fully containerized and deployable via Kubernetes manifests, governed by an automated Jenkins CI/CD pipeline.
 
-
 ## Prerequisites
-
-
 
 Before running this project, ensure you have the following installed on your host machine:
 
-
-
 * **Java 21 (JDK)**
-
 * **Apache Maven 3.8+**
-
 * **Docker & Docker Compose** (Ensure the Docker daemon is running)
-
 * **Git**
 * **kubectl & Minikube (For Kubernetes deployment)**
-
 * **Jenkins (For CI/CD execution)**
-
 
 ## Local Setup Instructions
 
-
-
 Follow these exact steps to compile the microservices and boot the complete ecosystem locally.
-
 
 **1. Configure Local Docker Daemon**
 
@@ -67,27 +49,18 @@ The Execution Service requires access to the Docker API via the `docker-java` SD
 
 * *Warning: Use this setting for local development only.*
 
-
-
 **2. Pull Execution Base Images**
 
 The sandboxing engine requires specific lightweight base images to execute user code. Pull these into your local Docker cache before starting the application:
 
-```bash
-
 docker pull eclipse-temurin:21-jdk-alpine
-
 docker pull node:20-slim
-
 docker pull gcc:13
-
 docker pull python:3.11-slim
-
 
 **3. Clone the repository**
 
 git clone https://github.com/abhinav195/CodeRank.git
-
 cd CodeRank
 
 **4. Build the multi-module Maven project**
@@ -108,12 +81,11 @@ docker-compose logs -f gateway
 The API Gateway is now accessible at http://localhost:8080. All API interactions must route through this port.
 
 **Observability Dashboards**
+
 Once the cluster is running, the observability stack is automatically provisioned. Access the dashboards via the following local ports:
 
 **Grafana (Metrics & JVM Health):** http://localhost:3000 (Default credentials: admin/admin)
-
 **Prometheus (Scrape Targets):** http://localhost:9090
-
 **Jaeger (Distributed Tracing UI):** http://localhost:16686
 
 **Kubernetes & CI/CD Deployment**
